@@ -3,11 +3,13 @@
   "version": "1.0.0",
   "description": "Custom bundle solution for Shopify stores",
   "main": "web/index.js",
+  "type": "module",
   "license": "MIT",
   "scripts": {
     "dev": "shopify app dev",
     "build": "shopify app build",
-    "deploy": "shopify app deploy"
+    "deploy": "shopify app deploy",
+    "start": "node web/index.js"
   },
   "dependencies": {
     "@shopify/app": "^3.45.0",

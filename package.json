@@ -16,8 +16,10 @@
     "@shopify/cli": "^3.45.0",
     "@shopify/polaris": "^11.1.2",
     "@shopify/shopify-api": "^7.5.0",
-    "express": "^4.18.2",
+    "axios": "^1.5.0",
+    "cookie-parser": "^1.4.6",
     "dotenv": "^16.3.1",
+    "express": "^4.18.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.10.0"

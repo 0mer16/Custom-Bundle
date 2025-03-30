@@ -1,0 +1,25 @@
+{
+  "name": "shopify-custom-bundles",
+  "version": "1.0.0",
+  "description": "Custom bundle solution for Shopify stores",
+  "main": "web/index.js",
+  "license": "MIT",
+  "scripts": {
+    "dev": "shopify app dev",
+    "build": "shopify app build",
+    "deploy": "shopify app deploy"
+  },
+  "dependencies": {
+    "@shopify/app": "^3.45.0",
+    "@shopify/cli": "^3.45.0",
+    "@shopify/polaris": "^11.1.2",
+    "@shopify/shopify-api": "^7.5.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.10.0"
+  },
+  "devDependencies": {
+    "prettier": "^2.8.7",
+    "vite": "^4.3.9"
+  }
+} 

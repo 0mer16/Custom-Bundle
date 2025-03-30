@@ -1,0 +1,390 @@
+{% layout 'theme' %}
+
+<div class="custom-bundle-container" data-bundle-id="{{ bundle.id }}" data-shop-domain="{{ shop.domain }}">
+  <div class="bundle-header">
+    <h1>{{ bundle.title }}</h1>
+    {% if bundle.description %}
+      <div class="bundle-description">{{ bundle.description }}</div>
+    {% endif %}
+    
+    <div class="bundle-pricing">
+      <span class="bundle-price">{{ bundle.price | money }}</span>
+      {% if bundle.compare_at_price %}
+        <span class="bundle-compare-price">{{ bundle.compare_at_price | money }}</span>
+      {% endif %}
+    </div>
+  </div>
+  
+  <div class="bundle-items">
+    {% for item in bundle.items %}
+      <div class="bundle-item" data-item-id="{{ item.id }}">
+        <div class="bundle-item-header">
+          {% if item.image %}
+            <div class="bundle-item-image">
+              <img src="{{ item.image | img_url: '100x100', crop: 'center' }}" alt="{{ item.title }}" />
+            </div>
+          {% endif %}
+          
+          <div class="bundle-item-content">
+            <h2>{{ item.title }}</h2>
+            {% if item.description %}
+              <div class="bundle-item-description">{{ item.description }}</div>
+            {% endif %}
+            
+            {% if item.required %}
+              <span class="bundle-item-required">Required</span>
+            {% endif %}
+          </div>
+        </div>
+        
+        <div class="bundle-item-options">
+          {% for option in item.options %}
+            <div class="bundle-option" data-option-type="{{ option.type }}">
+              <h3>{{ option.type | capitalize }}</h3>
+              
+              <div class="bundle-option-values">
+                {% for value in option.values %}
+                  <div class="bundle-option-value">
+                    <label>
+                      <input 
+                        type="radio" 
+                        name="option-{{ item.id }}-{{ option.type }}" 
+                        value="{{ value }}" 
+                        {% if forloop.first %}checked{% endif %} 
+                        data-item-id="{{ item.id }}" 
+                        data-option-type="{{ option.type }}"
+                      />
+                      <span>{{ value }}</span>
+                      
+                      {% if option.type == 'color' %}
+                        <span class="color-swatch" style="background-color: {{ value | downcase }}"></span>
+                      {% endif %}
+                    </label>
+                  </div>
+                {% endfor %}
+              </div>
+            </div>
+          {% endfor %}
+          
+          {% if item.variants.size > 0 %}
+            <div class="bundle-variant-selector">
+              <label for="variant-{{ item.id }}">Size</label>
+              <select id="variant-{{ item.id }}" data-item-id="{{ item.id }}">
+                <option value="">Select a size</option>
+                {% for variant in item.variants %}
+                  <option value="{{ variant.id }}">{{ variant.title }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+  
+  <div class="bundle-actions">
+    <button type="button" class="bundle-add-to-cart" data-bundle-id="{{ bundle.id }}">
+      Add Bundle to Cart - {{ bundle.price | money }}
+    </button>
+    
+    <div class="bundle-error" style="display: none;"></div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const bundleContainer = document.querySelector('.custom-bundle-container');
+    const bundleId = bundleContainer.dataset.bundleId;
+    const shopDomain = bundleContainer.dataset.shopDomain;
+    const addToCartButton = document.querySelector('.bundle-add-to-cart');
+    const errorContainer = document.querySelector('.bundle-error');
+    
+    // Track selected options
+    const selectedOptions = {};
+    
+    // Initialize selected options
+    document.querySelectorAll('.bundle-item').forEach(item => {
+      const itemId = item.dataset.itemId;
+      selectedOptions[itemId] = {
+        productId: item.dataset.productId || '',
+        variantId: '',
+        options: {}
+      };
+      
+      // Set default option values
+      item.querySelectorAll('.bundle-option').forEach(option => {
+        const optionType = option.dataset.optionType;
+        const checkedInput = option.querySelector('input[type="radio"]:checked');
+        
+        if (checkedInput) {
+          selectedOptions[itemId].options[optionType] = checkedInput.value;
+        }
+      });
+    });
+    
+    // Handle option changes
+    document.querySelectorAll('.bundle-option input[type="radio"]').forEach(input => {
+      input.addEventListener('change', function() {
+        const itemId = this.dataset.itemId;
+        const optionType = this.dataset.optionType;
+        const value = this.value;
+        
+        selectedOptions[itemId].options[optionType] = value;
+        
+        // Update UI for color swatches
+        if (optionType === 'color') {
+          document.querySelectorAll(`.bundle-option[data-option-type="color"] .color-swatch`).forEach(swatch => {
+            swatch.classList.remove('selected');
+          });
+          
+          this.nextElementSibling.nextElementSibling.classList.add('selected');
+        }
+      });
+    });
+    
+    // Handle variant changes
+    document.querySelectorAll('.bundle-variant-selector select').forEach(select => {
+      select.addEventListener('change', function() {
+        const itemId = this.dataset.itemId;
+        const variantId = this.value;
+        
+        selectedOptions[itemId].variantId = variantId;
+      });
+    });
+    
+    // Handle add to cart
+    addToCartButton.addEventListener('click', async function() {
+      try {
+        addToCartButton.textContent = 'Adding...';
+        addToCartButton.disabled = true;
+        errorContainer.style.display = 'none';
+        
+        // Check if all required selections have been made
+        const missingSelections = [];
+        document.querySelectorAll('.bundle-item').forEach(item => {
+          const itemId = item.dataset.itemId;
+          const isRequired = item.querySelector('.bundle-item-required') !== null;
+          
+          if (isRequired && !selectedOptions[itemId].variantId) {
+            const itemTitle = item.querySelector('h2').textContent;
+            missingSelections.push(itemTitle);
+          }
+        });
+        
+        if (missingSelections.length > 0) {
+          throw new Error(`Please complete your selection for: ${missingSelections.join(', ')}`);
+        }
+        
+        // Prepare selected items for cart
+        const items = [];
+        Object.keys(selectedOptions).forEach(itemId => {
+          const option = selectedOptions[itemId];
+          if (option.variantId) {
+            items.push({
+              variantId: option.variantId,
+              quantity: 1
+            });
+          }
+        });
+        
+        // Add items to cart
+        const response = await fetch(`/api/storefronts/${shopDomain}/cart/add`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            items,
+            attributes: {
+              bundle_id: bundleId
+            }
+          })
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to add items to cart');
+        }
+        
+        // Redirect to cart
+        window.location.href = '/cart';
+      } catch (error) {
+        errorContainer.textContent = error.message;
+        errorContainer.style.display = 'block';
+        console.error('Error adding to cart:', error);
+      } finally {
+        addToCartButton.textContent = `Add Bundle to Cart - {{ bundle.price | money }}`;
+        addToCartButton.disabled = false;
+      }
+    });
+  });
+</script>
+
+<style>
+  .custom-bundle-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+  }
+  
+  .bundle-header {
+    margin-bottom: 30px;
+    text-align: center;
+  }
+  
+  .bundle-description {
+    margin-top: 10px;
+  }
+  
+  .bundle-pricing {
+    margin: 20px 0;
+  }
+  
+  .bundle-price {
+    font-size: 24px;
+    font-weight: bold;
+    margin-right: 10px;
+  }
+  
+  .bundle-compare-price {
+    font-size: 18px;
+    text-decoration: line-through;
+    color: #777;
+  }
+  
+  .bundle-items {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+  }
+  
+  .bundle-item {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 20px;
+  }
+  
+  .bundle-item-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 15px;
+  }
+  
+  .bundle-item-image {
+    margin-right: 15px;
+  }
+  
+  .bundle-item-image img {
+    max-width: 100px;
+    border-radius: 4px;
+  }
+  
+  .bundle-item-content {
+    flex: 1;
+  }
+  
+  .bundle-item-content h2 {
+    margin: 0 0 10px;
+    font-size: 18px;
+  }
+  
+  .bundle-item-description {
+    font-size: 14px;
+    color: #555;
+    margin-bottom: 10px;
+  }
+  
+  .bundle-item-required {
+    display: inline-block;
+    background-color: #e6f7ff;
+    color: #0066cc;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    margin-top: 5px;
+  }
+  
+  .bundle-option {
+    margin-bottom: 20px;
+  }
+  
+  .bundle-option h3 {
+    font-size: 16px;
+    margin-bottom: 10px;
+  }
+  
+  .bundle-option-values {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  
+  .bundle-option-value label {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+  }
+  
+  .bundle-option-value input {
+    margin-right: 5px;
+  }
+  
+  .color-swatch {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-left: 8px;
+    border: 2px solid transparent;
+  }
+  
+  .color-swatch.selected {
+    border-color: #000;
+  }
+  
+  .bundle-variant-selector {
+    margin-top: 15px;
+  }
+  
+  .bundle-variant-selector select {
+    width: 100%;
+    padding: 8px;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+  }
+  
+  .bundle-actions {
+    margin-top: 30px;
+    text-align: center;
+  }
+  
+  .bundle-add-to-cart {
+    background-color: #000;
+    color: #fff;
+    border: none;
+    padding: 12px 24px;
+    font-size: 16px;
+    font-weight: bold;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+  }
+  
+  .bundle-add-to-cart:hover {
+    background-color: #333;
+  }
+  
+  .bundle-add-to-cart:disabled {
+    background-color: #999;
+    cursor: not-allowed;
+  }
+  
+  .bundle-error {
+    margin-top: 15px;
+    padding: 10px;
+    background-color: #fff1f0;
+    border: 1px solid #ffccc7;
+    color: #ff4d4f;
+    border-radius: 4px;
+  }
+</style> 

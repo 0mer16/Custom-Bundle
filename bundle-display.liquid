@@ -1,0 +1,516 @@
+{% comment %}
+  Bundle Display Snippet
+  Displays a custom bundle on any page
+  
+  Usage:
+  {% render 'bundle-display', bundle_id: 'your-bundle-id' %}
+{% endcomment %}
+
+{% if bundle_id %}
+  {% assign bundle_endpoint = '/api/storefronts/' | append: shop.domain | append: '/bundles/' | append: bundle_id %}
+  
+  <div 
+    class="bundle-display-container" 
+    data-bundle-id="{{ bundle_id }}" 
+    data-shop-domain="{{ shop.domain }}"
+    data-endpoint="{{ bundle_endpoint }}"
+  >
+    <div class="bundle-loading">
+      <div class="loading-spinner"></div>
+      <p>Loading bundle...</p>
+    </div>
+    
+    <div class="bundle-content" style="display: none;">
+      <!-- Bundle content will be loaded dynamically -->
+    </div>
+    
+    <div class="bundle-error" style="display: none;">
+      <p>Unable to load bundle. Please try again later.</p>
+    </div>
+  </div>
+  
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const containers = document.querySelectorAll('.bundle-display-container');
+      
+      containers.forEach(function(container) {
+        const bundleId = container.dataset.bundleId;
+        const endpoint = container.dataset.endpoint;
+        const contentEl = container.querySelector('.bundle-content');
+        const loadingEl = container.querySelector('.bundle-loading');
+        const errorEl = container.querySelector('.bundle-error');
+        
+        // Fetch bundle data
+        fetch(endpoint)
+          .then(response => {
+            if (!response.ok) {
+              throw new Error('Failed to fetch bundle');
+            }
+            return response.json();
+          })
+          .then(data => {
+            // Render bundle content
+            renderBundle(data.bundle, contentEl);
+            
+            // Hide loading, show content
+            loadingEl.style.display = 'none';
+            contentEl.style.display = 'block';
+            
+            // Initialize event handlers
+            initializeBundleEvents(container, data.bundle);
+          })
+          .catch(error => {
+            console.error('Error loading bundle:', error);
+            loadingEl.style.display = 'none';
+            errorEl.style.display = 'block';
+          });
+      });
+      
+      // Render bundle content
+      function renderBundle(bundle, container) {
+        // Basic bundle HTML structure
+        let html = `
+          <div class="bundle-header">
+            <h2 class="bundle-title">${bundle.title}</h2>
+            ${bundle.description ? `<div class="bundle-description">${bundle.description}</div>` : ''}
+            
+            <div class="bundle-pricing">
+              <span class="bundle-price">$${bundle.price}</span>
+              ${bundle.compareAtPrice ? `<span class="bundle-compare-price">$${bundle.compareAtPrice}</span>` : ''}
+            </div>
+          </div>
+          
+          <div class="bundle-items">
+        `;
+        
+        // Add each bundle item
+        bundle.items.forEach(item => {
+          html += `
+            <div class="bundle-item" data-item-id="${item.id}" data-product-id="${item.productId}">
+              <div class="bundle-item-header">
+                ${item.image ? `
+                  <div class="bundle-item-image">
+                    <img src="${item.image}" alt="${item.title}" />
+                  </div>
+                ` : ''}
+                
+                <div class="bundle-item-content">
+                  <h3 class="bundle-item-title">${item.title}</h3>
+                  ${item.description ? `<div class="bundle-item-description">${item.description}</div>` : ''}
+                  ${item.required ? `<span class="bundle-item-required">Required</span>` : ''}
+                </div>
+              </div>
+              
+              <div class="bundle-item-options">
+          `;
+          
+          // Add options for this item
+          item.options.forEach(option => {
+            html += `
+              <div class="bundle-option" data-option-type="${option.type}">
+                <h4>${option.type.charAt(0).toUpperCase() + option.type.slice(1)}</h4>
+                
+                <div class="bundle-option-values">
+            `;
+            
+            // Add option values
+            option.values.forEach((value, index) => {
+              html += `
+                <div class="bundle-option-value">
+                  <label>
+                    <input 
+                      type="radio" 
+                      name="option-${item.id}-${option.type}" 
+                      value="${value}" 
+                      ${index === 0 ? 'checked' : ''} 
+                      data-item-id="${item.id}" 
+                      data-option-type="${option.type}"
+                    />
+                    <span>${value}</span>
+                    
+                    ${option.type === 'color' ? `
+                      <span class="color-swatch" style="background-color: ${value.toLowerCase()}"></span>
+                    ` : ''}
+                  </label>
+                </div>
+              `;
+            });
+            
+            html += `
+                </div>
+              </div>
+            `;
+          });
+          
+          // Add variant selector if available
+          if (item.variants && item.variants.length > 0) {
+            html += `
+              <div class="bundle-variant-selector">
+                <label for="variant-${item.id}">Size</label>
+                <select id="variant-${item.id}" data-item-id="${item.id}">
+                  <option value="">Select a size</option>
+            `;
+            
+            item.variants.forEach(variant => {
+              html += `<option value="${variant.id}">${variant.title}</option>`;
+            });
+            
+            html += `
+                </select>
+              </div>
+            `;
+          }
+          
+          html += `
+              </div>
+            </div>
+          `;
+        });
+        
+        // Add bundle actions
+        html += `
+          </div>
+          
+          <div class="bundle-actions">
+            <button type="button" class="bundle-add-to-cart" data-bundle-id="${bundle.id}">
+              Add Bundle to Cart - $${bundle.price}
+            </button>
+            
+            <div class="bundle-error-message" style="display: none;"></div>
+          </div>
+        `;
+        
+        // Set the HTML content
+        container.innerHTML = html;
+      }
+      
+      // Initialize event handlers for the bundle
+      function initializeBundleEvents(container, bundle) {
+        const bundleId = container.dataset.bundleId;
+        const shopDomain = container.dataset.shopDomain;
+        
+        // Track selected options
+        const selectedOptions = {};
+        
+        // Initialize selected options
+        container.querySelectorAll('.bundle-item').forEach(item => {
+          const itemId = item.dataset.itemId;
+          selectedOptions[itemId] = {
+            productId: item.dataset.productId || '',
+            variantId: '',
+            options: {}
+          };
+          
+          // Set default option values
+          item.querySelectorAll('.bundle-option').forEach(option => {
+            const optionType = option.dataset.optionType;
+            const checkedInput = option.querySelector('input[type="radio"]:checked');
+            
+            if (checkedInput) {
+              selectedOptions[itemId].options[optionType] = checkedInput.value;
+            }
+          });
+        });
+        
+        // Handle option changes
+        container.querySelectorAll('.bundle-option input[type="radio"]').forEach(input => {
+          input.addEventListener('change', function() {
+            const itemId = this.dataset.itemId;
+            const optionType = this.dataset.optionType;
+            const value = this.value;
+            
+            selectedOptions[itemId].options[optionType] = value;
+            
+            // Update UI for color swatches
+            if (optionType === 'color') {
+              container.querySelectorAll(`.bundle-option[data-option-type="color"] .color-swatch`).forEach(swatch => {
+                swatch.classList.remove('selected');
+              });
+              
+              this.nextElementSibling.nextElementSibling.classList.add('selected');
+            }
+          });
+        });
+        
+        // Handle variant changes
+        container.querySelectorAll('.bundle-variant-selector select').forEach(select => {
+          select.addEventListener('change', function() {
+            const itemId = this.dataset.itemId;
+            const variantId = this.value;
+            
+            selectedOptions[itemId].variantId = variantId;
+          });
+        });
+        
+        // Handle add to cart
+        const addToCartButton = container.querySelector('.bundle-add-to-cart');
+        const errorMessageEl = container.querySelector('.bundle-error-message');
+        
+        addToCartButton.addEventListener('click', async function() {
+          try {
+            addToCartButton.textContent = 'Adding...';
+            addToCartButton.disabled = true;
+            errorMessageEl.style.display = 'none';
+            
+            // Check if all required selections have been made
+            const missingSelections = [];
+            bundle.items.forEach(item => {
+              if (item.required && !selectedOptions[item.id].variantId) {
+                missingSelections.push(item.title);
+              }
+            });
+            
+            if (missingSelections.length > 0) {
+              throw new Error(`Please complete your selection for: ${missingSelections.join(', ')}`);
+            }
+            
+            // Prepare selected items for cart
+            const items = [];
+            Object.keys(selectedOptions).forEach(itemId => {
+              const option = selectedOptions[itemId];
+              if (option.variantId) {
+                items.push({
+                  variantId: option.variantId,
+                  quantity: 1
+                });
+              }
+            });
+            
+            // Add items to cart
+            const response = await fetch(`/api/storefronts/${shopDomain}/cart/add`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                items,
+                attributes: {
+                  bundle_id: bundleId
+                }
+              })
+            });
+            
+            if (!response.ok) {
+              throw new Error('Failed to add items to cart');
+            }
+            
+            // Redirect to cart
+            window.location.href = '/cart';
+          } catch (error) {
+            errorMessageEl.textContent = error.message;
+            errorMessageEl.style.display = 'block';
+            console.error('Error adding to cart:', error);
+          } finally {
+            addToCartButton.textContent = `Add Bundle to Cart - $${bundle.price}`;
+            addToCartButton.disabled = false;
+          }
+        });
+      }
+    });
+  </script>
+  
+  <style>
+    .bundle-display-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    
+    .bundle-loading {
+      text-align: center;
+      padding: 40px 0;
+    }
+    
+    .loading-spinner {
+      display: inline-block;
+      width: 40px;
+      height: 40px;
+      border: 4px solid rgba(0, 0, 0, 0.1);
+      border-radius: 50%;
+      border-top-color: #000;
+      animation: spin 1s ease-in-out infinite;
+      margin-bottom: 10px;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    .bundle-header {
+      margin-bottom: 30px;
+      text-align: center;
+    }
+    
+    .bundle-title {
+      margin-bottom: 10px;
+    }
+    
+    .bundle-description {
+      margin-top: 10px;
+    }
+    
+    .bundle-pricing {
+      margin: 20px 0;
+    }
+    
+    .bundle-price {
+      font-size: 24px;
+      font-weight: bold;
+      margin-right: 10px;
+    }
+    
+    .bundle-compare-price {
+      font-size: 18px;
+      text-decoration: line-through;
+      color: #777;
+    }
+    
+    .bundle-items {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 20px;
+    }
+    
+    .bundle-item {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 20px;
+    }
+    
+    .bundle-item-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+    
+    .bundle-item-image {
+      margin-right: 15px;
+    }
+    
+    .bundle-item-image img {
+      max-width: 100px;
+      border-radius: 4px;
+    }
+    
+    .bundle-item-content {
+      flex: 1;
+    }
+    
+    .bundle-item-title {
+      margin: 0 0 10px;
+      font-size: 18px;
+    }
+    
+    .bundle-item-description {
+      font-size: 14px;
+      color: #555;
+      margin-bottom: 10px;
+    }
+    
+    .bundle-item-required {
+      display: inline-block;
+      background-color: #e6f7ff;
+      color: #0066cc;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      margin-top: 5px;
+    }
+    
+    .bundle-option {
+      margin-bottom: 20px;
+    }
+    
+    .bundle-option h4 {
+      font-size: 16px;
+      margin-bottom: 10px;
+    }
+    
+    .bundle-option-values {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    
+    .bundle-option-value label {
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+    }
+    
+    .bundle-option-value input {
+      margin-right: 5px;
+    }
+    
+    .color-swatch {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-left: 8px;
+      border: 2px solid transparent;
+    }
+    
+    .color-swatch.selected {
+      border-color: #000;
+    }
+    
+    .bundle-variant-selector {
+      margin-top: 15px;
+    }
+    
+    .bundle-variant-selector select {
+      width: 100%;
+      padding: 8px;
+      border-radius: 4px;
+      border: 1px solid #ddd;
+    }
+    
+    .bundle-actions {
+      margin-top: 30px;
+      text-align: center;
+    }
+    
+    .bundle-add-to-cart {
+      background-color: #000;
+      color: #fff;
+      border: none;
+      padding: 12px 24px;
+      font-size: 16px;
+      font-weight: bold;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    
+    .bundle-add-to-cart:hover {
+      background-color: #333;
+    }
+    
+    .bundle-add-to-cart:disabled {
+      background-color: #999;
+      cursor: not-allowed;
+    }
+    
+    .bundle-error,
+    .bundle-error-message {
+      margin-top: 15px;
+      padding: 10px;
+      background-color: #fff1f0;
+      border: 1px solid #ffccc7;
+      color: #ff4d4f;
+      border-radius: 4px;
+    }
+    
+    @media (max-width: 768px) {
+      .bundle-items {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+{% else %}
+  <div class="bundle-error">
+    <p>No bundle ID provided. Please specify a bundle ID.</p>
+  </div>
+{% endif %} 

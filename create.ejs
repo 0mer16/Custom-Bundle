@@ -1,0 +1,83 @@
+<%- contentFor('body') %>
+
+<div class="page-header">
+  <h1 class="page-title">Create Bundle</h1>
+  <div class="page-actions">
+    <button id="save-bundle" class="btn btn-secondary">Save as Draft</button>
+    <button id="publish-bundle" class="btn btn-primary">Publish Bundle</button>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" data-tab="bundle-details">Bundle Details</div>
+  <div class="tab" data-tab="bundle-items">Bundle Items</div>
+</div>
+
+<!-- Bundle Details Tab -->
+<div id="bundle-details" class="tab-content active">
+  <div class="card">
+    <div class="card-content">
+      <div class="form-group">
+        <label for="bundle-title" class="form-label">Bundle Title</label>
+        <input type="text" id="bundle-title" class="form-control" placeholder="e.g. 'Happy 100 Days Gift Set'">
+        <span class="form-helper">This is displayed as the main title of your bundle.</span>
+      </div>
+      
+      <div class="form-group">
+        <label for="bundle-handle" class="form-label">Bundle Handle</label>
+        <input type="text" id="bundle-handle" class="form-control" placeholder="e.g. 'happy-100-days-gift-set'">
+        <span class="form-helper">This is used in the URL of your bundle page.</span>
+      </div>
+      
+      <div class="form-group">
+        <label for="bundle-description" class="form-label">Bundle Description</label>
+        <textarea id="bundle-description" class="form-control form-textarea" placeholder="Describe your bundle..."></textarea>
+        <span class="form-helper">This appears on the bundle product page.</span>
+      </div>
+      
+      <div class="form-row">
+        <div class="form-group" style="flex: 1; margin-right: 16px;">
+          <label for="discount-type" class="form-label">Discount Type</label>
+          <select id="discount-type" class="form-select">
+            <option value="percentage">Percentage Discount</option>
+            <option value="fixed_amount">Fixed Amount Discount</option>
+          </select>
+        </div>
+        
+        <div class="form-group" style="flex: 1;">
+          <label for="discount-value" class="form-label">Discount Value</label>
+          <input type="number" id="discount-value" class="form-control" placeholder="0" min="0">
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <label class="form-label">Bundle Image</label>
+        <input type="file" id="bundle-image-file" style="display: none;" accept="image/*">
+        <div id="bundle-image-upload" class="dragdrop-area">
+          <p class="dragdrop-message">Drag and drop an image here, or click to select a file</p>
+        </div>
+        <div id="bundle-image-preview" style="display: none;"></div>
+        <span class="form-helper">This image will be displayed on the bundle product page.</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Bundle Items Tab -->
+<div id="bundle-items" class="tab-content">
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">Bundle Products</h2>
+      <button id="add-bundle-item" class="btn btn-primary">Add Product</button>
+    </div>
+    <div class="card-content">
+      <div id="bundle-items-container">
+        <!-- Bundle items will be dynamically added here -->
+      </div>
+      
+      <div id="bundle-summary">
+        <!-- Bundle summary will be dynamically updated here -->
+      </div>
+    </div>
+  </div>
+</div> 

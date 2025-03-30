@@ -1,0 +1,212 @@
+<%- contentFor('body') %>
+
+<div class="page-header">
+  <h1 class="page-title">Dashboard</h1>
+</div>
+
+<div class="dashboard-stats">
+  <div class="card">
+    <div class="card-content">
+      <div class="stat-container">
+        <div class="stat-item">
+          <div class="stat-title">Total Bundles</div>
+          <div class="stat-value"><%= bundles.length || 0 %></div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-title">Published Bundles</div>
+          <div class="stat-value"><%= bundles.filter(b => b.published).length || 0 %></div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-title">Draft Bundles</div>
+          <div class="stat-value"><%= bundles.filter(b => !b.published).length || 0 %></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="dashboard-recent">
+  <h2 class="section-title">Recent Bundles</h2>
+  
+  <div class="card">
+    <div class="card-content">
+      <% if (bundles && bundles.length > 0) { %>
+        <table class="table">
+          <thead>
+            <tr>
+              <th style="width: 60px"></th>
+              <th>Bundle</th>
+              <th>Products</th>
+              <th>Status</th>
+              <th>Created</th>
+              <th style="width: 100px">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% bundles.slice(0, 5).forEach(bundle => { %>
+              <tr>
+                <td>
+                  <% if (bundle.image) { %>
+                    <img src="<%= bundle.image %>" alt="<%= bundle.title %>" class="table-img">
+                  <% } else { %>
+                    <div class="table-img" style="background-color: #f6f6f7;"></div>
+                  <% } %>
+                </td>
+                <td>
+                  <strong><%= bundle.title %></strong>
+                  <div style="font-size: 12px; color: #6d7175;">/<%= bundle.handle %></div>
+                </td>
+                <td><%= bundle.products ? bundle.products.length : 0 %> products</td>
+                <td>
+                  <% if (bundle.published) { %>
+                    <span class="badge badge-success">Published</span>
+                  <% } else { %>
+                    <span class="badge badge-draft">Draft</span>
+                  <% } %>
+                </td>
+                <td><%= new Date(bundle.created_at).toLocaleDateString() %></td>
+                <td>
+                  <a href="/admin/bundles/<%= bundle.id %>/edit?shop=<%= shop %>" class="btn btn-sm btn-secondary">Edit</a>
+                </td>
+              </tr>
+            <% }); %>
+          </tbody>
+        </table>
+        
+        <% if (bundles.length > 5) { %>
+          <div style="text-align: center; padding-top: 16px;">
+            <a href="/admin/bundles?shop=<%= shop %>" class="btn btn-secondary">View All Bundles</a>
+          </div>
+        <% } %>
+      <% } else { %>
+        <div style="text-align: center; padding: 48px 0;">
+          <h3>No bundles yet</h3>
+          <p style="color: #6d7175; margin-bottom: 24px;">Create your first bundle to start selling product collections.</p>
+          <a href="/admin/bundles/create?shop=<%= shop %>" class="btn btn-primary">Create Bundle</a>
+        </div>
+      <% } %>
+    </div>
+  </div>
+</div>
+
+<div class="dashboard-quickstart">
+  <h2 class="section-title">Quick Start Guide</h2>
+  
+  <div class="card">
+    <div class="card-content">
+      <div class="quick-steps">
+        <div class="quick-step">
+          <div class="quick-step-number">1</div>
+          <div class="quick-step-content">
+            <h3>Create a Bundle</h3>
+            <p>Start by creating a new bundle. Add a title, description, and image to showcase your products.</p>
+            <a href="/admin/bundles/create?shop=<%= shop %>" class="btn btn-sm btn-primary">Create Bundle</a>
+          </div>
+        </div>
+        
+        <div class="quick-step">
+          <div class="quick-step-number">2</div>
+          <div class="quick-step-content">
+            <h3>Add Products</h3>
+            <p>Add products to your bundle and specify color and size options for each item.</p>
+          </div>
+        </div>
+        
+        <div class="quick-step">
+          <div class="quick-step-number">3</div>
+          <div class="quick-step-content">
+            <h3>Set Pricing & Discounts</h3>
+            <p>Configure your bundle pricing strategy with percentage or fixed amount discounts.</p>
+          </div>
+        </div>
+        
+        <div class="quick-step">
+          <div class="quick-step-number">4</div>
+          <div class="quick-step-content">
+            <h3>Publish & Promote</h3>
+            <p>Once your bundle is ready, publish it to make it available in your store and start promoting it.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .dashboard-stats {
+    margin-bottom: 24px;
+  }
+  
+  .stat-container {
+    display: flex;
+    justify-content: space-between;
+  }
+  
+  .stat-item {
+    text-align: center;
+    flex: 1;
+    padding: 24px 0;
+  }
+  
+  .stat-title {
+    font-size: 14px;
+    color: #6d7175;
+    margin-bottom: 8px;
+  }
+  
+  .stat-value {
+    font-size: 32px;
+    font-weight: 600;
+    color: #212b36;
+  }
+  
+  .section-title {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 24px 0 16px;
+  }
+  
+  .dashboard-recent, .dashboard-quickstart {
+    margin-bottom: 32px;
+  }
+  
+  .quick-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  
+  .quick-step {
+    display: flex;
+    align-items: flex-start;
+  }
+  
+  .quick-step-number {
+    width: 32px;
+    height: 32px;
+    background-color: var(--primary-color);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    margin-right: 16px;
+    flex-shrink: 0;
+  }
+  
+  .quick-step-content {
+    flex: 1;
+  }
+  
+  .quick-step-content h3 {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0 0 8px 0;
+  }
+  
+  .quick-step-content p {
+    margin: 0 0 8px 0;
+    color: #6d7175;
+  }
+</style> 
